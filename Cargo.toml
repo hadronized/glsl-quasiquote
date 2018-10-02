@@ -1,0 +1,23 @@
+[package]
+name = "glsl-proc-macro"
+version = "0.1.0"
+authors = ["Dimitri Sabadie <dimitri.sabadie@gmail.com>"]
+description = "The glsl! procedural macro for the glsl crate."
+keywords = ["GLSL", "OpenGL", "SPIR-V", "parser", "proc-macro"]
+categories = ["parsing", "rendering"]
+homepage = "https://github.com/phaazon/glsl-proc-macro"
+repository = "https://github.com/phaazon/glsl-proc-macro"
+documentation = "https://docs.rs/glsl-proc-macro"
+readme = "README.md"
+
+[badges]
+travis-ci = { repository = "phaazon/glsl-proc-macro", branch = "master" }
+is-it-maintained-issue-resolution = { repository = "phaazon/glsl-proc-macro" }
+is-it-maintained-open-issues = { repository = "phaazon/glsl-proc-macro" }
+maintenance = { status = "passively-maintained" }
+
+[lib]
+proc-macro = true
+
+[dependencies]
+glsl = "0.9"
