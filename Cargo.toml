@@ -1,19 +1,19 @@
 [package]
-name = "glsl-proc-macro"
+name = "glsl-quasiquote"
 version = "0.1.0"
 authors = ["Dimitri Sabadie <dimitri.sabadie@gmail.com>"]
-description = "The glsl! procedural macro for the glsl crate."
+description = "The glsl! procedural macro, providing quasiquoting of the glsl crate."
 keywords = ["GLSL", "OpenGL", "SPIR-V", "parser", "proc-macro"]
-categories = ["parsing", "rendering"]
-homepage = "https://github.com/phaazon/glsl-proc-macro"
-repository = "https://github.com/phaazon/glsl-proc-macro"
-documentation = "https://docs.rs/glsl-proc-macro"
+categories = ["parsing", "rendering", "quasiquoting"]
+homepage = "https://github.com/phaazon/glsl-quasiquote"
+repository = "https://github.com/phaazon/glsl-quasiquote"
+documentation = "https://docs.rs/glsl-quasiquote"
 readme = "README.md"
 
 [badges]
-travis-ci = { repository = "phaazon/glsl-proc-macro", branch = "master" }
-is-it-maintained-issue-resolution = { repository = "phaazon/glsl-proc-macro" }
-is-it-maintained-open-issues = { repository = "phaazon/glsl-proc-macro" }
+travis-ci = { repository = "phaazon/glsl-quasiquote", branch = "master" }
+is-it-maintained-issue-resolution = { repository = "phaazon/glsl-quasiquote" }
+is-it-maintained-open-issues = { repository = "phaazon/glsl-quasiquote" }
 maintenance = { status = "passively-maintained" }
 
 [lib]
@@ -21,3 +21,5 @@ proc-macro = true
 
 [dependencies]
 glsl = "0.9"
+proc-macro2 = "0.4"
+quote = "0.6"
