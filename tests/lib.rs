@@ -4,5 +4,10 @@
 
 #[test]
 fn void_main_empty() {
-  let _ = glsl!{"void main() {}"};
+  let _ = glsl!{void main() {}};
+}
+
+#[test]
+fn void_main_empty_str() {
+  let _ = glsl_str!{"void main() {}"};
 }
