@@ -14,6 +14,18 @@ use quoted_option::QuotedOption;
 
 #[proc_macro]
 pub fn glsl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+  let s = format!("{}", input);
+  let parsed = parse_str(s.as_str(), translation_unit);
+
+  if let ParseResult::Ok(tu) = parsed {
+    tokenize_translation_unit(&tu).into()
+  } else {
+    panic!("GLSL error: {:?}", parsed);
+  }
+}
+
+#[proc_macro]
+pub fn glsl_str(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
   // we assume only one token: a string
   match input.into_iter().next() {
     Some(proc_macro::TokenTree::Literal(ref input_str, ..)) => {
