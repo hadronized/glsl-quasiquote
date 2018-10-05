@@ -33,14 +33,14 @@
 //! 
 //! Add the following to your dependencies in your `Cargo.toml`:
 //! 
-//! ```
+//! ```ignore
 //! glsl = "0.9"
 //! glsl-quasiquote = "0.1"
 //! ```
 //! 
 //! Then, you currently need to have a nightly compiler and the following feature enabled:
 //! 
-//! ```
+//! ```ignore
 //! #![feature(proc_macro_non_items)]
 //! ```
 //! 
@@ -48,14 +48,15 @@
 //! 
 //! > *Non-2018 edition*
 //! 
-//! ```
+//! ```ignore
 //! extern crate glsl;
 //! #[macro_use] extern crate glsl_quasiquote;
 //! ```
 //! 
 //! > *2018 edition*
 //! 
-//! ```
+//! ```ignore
+//! extern crate glsl;
 //! use glsl_quasiquote::{glsl, glsl_str};
 //! ```
 
