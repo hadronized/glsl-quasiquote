@@ -11,3 +11,12 @@ fn void_main_empty() {
 fn void_main_empty_str() {
   let _ = glsl_str!{"void main() {}"};
 }
+
+#[test]
+fn understands_version() {
+  let _ = glsl_str!{"
+    #version 330 core
+    void main() {
+    }
+  "};
+}
