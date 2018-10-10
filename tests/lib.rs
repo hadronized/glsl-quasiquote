@@ -20,3 +20,12 @@ fn understands_version() {
     }
   "};
 }
+
+#[test]
+fn fn_returns_int() {
+  let _ = glsl!{
+    int test() {
+      return 3.;
+    }
+  };
+}

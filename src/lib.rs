@@ -65,14 +65,14 @@ extern crate proc_macro;
 extern crate proc_macro2;
 #[macro_use] extern crate quote;
 
-mod quoted_option;
+mod quoted;
 
 use glsl::parser::{ParseResult, parse_str};
 use glsl::parsers::translation_unit;
 use glsl::syntax;
 use proc_macro2::TokenStream;
 
-use quoted_option::QuotedOption;
+use quoted::Quoted;
 
 #[proc_macro]
 pub fn glsl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -282,7 +282,7 @@ fn tokenize_array_spec(a: &syntax::ArraySpecifier) -> TokenStream {
   match *a {
     syntax::ArraySpecifier::Unsized => quote!{ glsl::syntax::ArraySpecifier::Unsized },
     syntax::ArraySpecifier::ExplicitlySized(ref e) => {
-      let expr = Box::new(tokenize_expr(&e));
+      let expr = Box::new(tokenize_expr(&e)).quote();
       quote!{ glsl::syntax::ArraySpecifier::ExplicitlySized(#expr) }
     }
   }
@@ -367,7 +367,7 @@ fn tokenize_layout_qualifier(l: &syntax::LayoutQualifier) -> TokenStream {
 fn tokenize_layout_qualifier_spec(l: &syntax::LayoutQualifierSpec) -> TokenStream {
   match *l {
     syntax::LayoutQualifierSpec::Identifier(ref i, ref e) => {
-      let expr = e.as_ref().map(|e| Box::new(tokenize_expr(&e))).quote();
+      let expr = e.as_ref().map(|e| Box::new(tokenize_expr(&e)).quote()).quote();
       quote!{ glsl::syntax::LayoutQualifierSpec::Identifier(#i, #expr) }
     }
 
@@ -407,33 +407,33 @@ fn tokenize_expr(expr: &syntax::Expr) -> TokenStream {
 
     syntax::Expr::Unary(ref op, ref e) => {
       let op = tokenize_unary_op(op);
-      let e = Box::new(tokenize_expr(e));
+      let e = Box::new(tokenize_expr(e)).quote();
       quote!{ glsl::syntax::Expr::Unary(#op, #e) }
     }
 
     syntax::Expr::Binary(ref op, ref l, ref r) => {
       let op = tokenize_binary_op(op);
-      let l = Box::new(tokenize_expr(l));
-      let r = Box::new(tokenize_expr(r));
+      let l = Box::new(tokenize_expr(l)).quote();
+      let r = Box::new(tokenize_expr(r)).quote();
       quote!{ glsl::syntax::Expr::Binary(#op, #l, #r) }
     }
 
     syntax::Expr::Ternary(ref c, ref s, ref e) => {
-      let c = Box::new(tokenize_expr(c));
-      let s = Box::new(tokenize_expr(s));
-      let e = Box::new(tokenize_expr(e));
+      let c = Box::new(tokenize_expr(c)).quote();
+      let s = Box::new(tokenize_expr(s)).quote();
+      let e = Box::new(tokenize_expr(e)).quote();
       quote!{ glsl::syntax::Expr::Ternary(#c, #s, #e) }
     }
 
     syntax::Expr::Assignment(ref v, ref op, ref e) => {
-      let v = Box::new(tokenize_expr(v));
+      let v = Box::new(tokenize_expr(v)).quote();
       let op = tokenize_assignment_op(op);
-      let e = Box::new(tokenize_expr(e));
+      let e = Box::new(tokenize_expr(e)).quote();
       quote!{ glsl::syntax::Expr::Assignment(#v, #op, #e) }
     }
 
     syntax::Expr::Bracket(ref e, ref a) => {
-      let e = Box::new(tokenize_expr(e));
+      let e = Box::new(tokenize_expr(e)).quote();
       let a = tokenize_array_spec(a);
       quote!{ glsl::syntax::Expr::Bracket(#e, #a) }
     }
@@ -445,23 +445,23 @@ fn tokenize_expr(expr: &syntax::Expr) -> TokenStream {
     }
 
     syntax::Expr::Dot(ref e, ref i) => {
-      let e = Box::new(tokenize_expr(e));
+      let e = Box::new(tokenize_expr(e)).quote();
       quote!{ glsl::syntax::Expr::Dot(#e, #i) }
     }
 
     syntax::Expr::PostInc(ref e) => {
-      let e = Box::new(tokenize_expr(e));
+      let e = Box::new(tokenize_expr(e)).quote();
       quote!{ glsl::syntax::Expr::PostInc(#e) }
     }
 
     syntax::Expr::PostDec(ref e) => {
-      let e = Box::new(tokenize_expr(e));
+      let e = Box::new(tokenize_expr(e)).quote();
       quote!{ glsl::syntax::Expr::PostDec(#e) }
     }
 
     syntax::Expr::Comma(ref a, ref b) => {
-      let a = Box::new(tokenize_expr(a));
-      let b = Box::new(tokenize_expr(b));
+      let a = Box::new(tokenize_expr(a)).quote();
+      let b = Box::new(tokenize_expr(b)).quote();
       quote!{ glsl::syntax::Expr::Comma(#a, #b) }
     }
   }
@@ -701,12 +701,12 @@ fn tokenize_compound_statement(cst: &syntax::CompoundStatement) -> TokenStream {
 fn tokenize_statement(st: &syntax::Statement) -> TokenStream {
   match *st {
     syntax::Statement::Compound(ref cst) => {
-      let s = Box::new(tokenize_compound_statement(cst));
+      let s = Box::new(tokenize_compound_statement(cst)).quote();
       quote!{ glsl::syntax::Statement::Compound(#s) }
     }
 
     syntax::Statement::Simple(ref sst) => {
-      let s = Box::new(tokenize_simple_statement(sst));
+      let s = Box::new(tokenize_simple_statement(sst)).quote();
       quote!{ glsl::syntax::Statement::Simple(#s) }
     }
   }
@@ -757,7 +757,7 @@ fn tokenize_expression_statement(est: &syntax::ExprStatement) -> TokenStream {
 }
 
 fn tokenize_selection_statement(sst: &syntax::SelectionStatement) -> TokenStream {
-  let cond = Box::new(tokenize_expr(&sst.cond));
+  let cond = Box::new(tokenize_expr(&sst.cond)).quote();
   let rest = tokenize_selection_rest_statement(&sst.rest);
 
   quote!{
@@ -771,20 +771,20 @@ fn tokenize_selection_statement(sst: &syntax::SelectionStatement) -> TokenStream
 fn tokenize_selection_rest_statement(sst: &syntax::SelectionRestStatement) -> TokenStream {
   match *sst {
     syntax::SelectionRestStatement::Statement(ref if_st) => {
-      let e = Box::new(tokenize_statement(if_st));
+      let e = Box::new(tokenize_statement(if_st)).quote();
       quote!{ glsl::syntax::SelectionRestStatement::Statement(#e) }
     }
 
     syntax::SelectionRestStatement::Else(ref if_st, ref else_st) => {
-      let if_st = Box::new(tokenize_statement(if_st));
-      let else_st = Box::new(tokenize_statement(else_st));
+      let if_st = Box::new(tokenize_statement(if_st)).quote();
+      let else_st = Box::new(tokenize_statement(else_st)).quote();
       quote!{ glsl::syntax::SelectionRestStatement::Else(#if_st, #else_st) }
     }
   }
 }
 
 fn tokenize_switch_statement(sst: &syntax::SwitchStatement) -> TokenStream {
-  let head = Box::new(tokenize_expr(&sst.head));
+  let head = Box::new(tokenize_expr(&sst.head)).quote();
   let body = sst.body.iter().map(tokenize_statement);
 
   quote!{
@@ -798,7 +798,7 @@ fn tokenize_switch_statement(sst: &syntax::SwitchStatement) -> TokenStream {
 fn tokenize_case_label(cl: &syntax::CaseLabel) -> TokenStream {
   match *cl {
     syntax::CaseLabel::Case(ref e) => {
-      let e = Box::new(tokenize_expr(e));
+      let e = Box::new(tokenize_expr(e)).quote();
       quote!{ glsl::syntax::CaseLabel::Case(#e) }
     }
 
@@ -810,20 +810,20 @@ fn tokenize_iteration_statement(ist: &syntax::IterationStatement) -> TokenStream
   match *ist {
     syntax::IterationStatement::While(ref cond, ref body) => {
       let cond = tokenize_condition(cond);
-      let body = Box::new(tokenize_statement(body));
+      let body = Box::new(tokenize_statement(body)).quote();
       quote!{ glsl::syntax::IterationStatement::While(#cond, #body) }
     }
 
     syntax::IterationStatement::DoWhile(ref body, ref cond) => {
-      let body = Box::new(tokenize_statement(body));
-      let cond = Box::new(tokenize_expr(cond));
+      let body = Box::new(tokenize_statement(body)).quote();
+      let cond = Box::new(tokenize_expr(cond)).quote();
       quote!{ glsl::syntax::IterationStatement::DoWhile(#body, #cond) }
     }
 
     syntax::IterationStatement::For(ref init, ref rest, ref body) => {
       let init = tokenize_for_init_statement(init);
       let rest = tokenize_for_rest_statement(rest);
-      let body = Box::new(tokenize_statement(body));
+      let body = Box::new(tokenize_statement(body)).quote();
       quote!{ glsl::syntax::IterationStatement::For(#init, #rest, #body) }
     }
   }
@@ -832,7 +832,7 @@ fn tokenize_iteration_statement(ist: &syntax::IterationStatement) -> TokenStream
 fn tokenize_condition(c: &syntax::Condition) -> TokenStream {
   match *c {
     syntax::Condition::Expr(ref e) => {
-      let e = Box::new(tokenize_expr(e));
+      let e = Box::new(tokenize_expr(e)).quote();
       quote!{ glsl::syntax::Condition::Expr(#e) }
     }
 
@@ -852,7 +852,7 @@ fn tokenize_for_init_statement(i: &syntax::ForInitStatement) -> TokenStream {
     }
 
     syntax::ForInitStatement::Declaration(ref d) => {
-      let d = Box::new(tokenize_declaration(d));
+      let d = Box::new(tokenize_declaration(d)).quote();
       quote!{ glsl::syntax::ForInitStatement::Declaration(#d) }
     }
   }
@@ -860,7 +860,7 @@ fn tokenize_for_init_statement(i: &syntax::ForInitStatement) -> TokenStream {
 
 fn tokenize_for_rest_statement(r: &syntax::ForRestStatement) -> TokenStream {
   let cond = r.condition.as_ref().map(tokenize_condition).quote();
-  let post = r.post_expr.as_ref().map(|e| Box::new(tokenize_expr(&e))).quote();
+  let post = r.post_expr.as_ref().map(|e| Box::new(tokenize_expr(&e)).quote()).quote();
 
   quote!{
     glsl::syntax::ForRestStatement {
@@ -872,12 +872,12 @@ fn tokenize_for_rest_statement(r: &syntax::ForRestStatement) -> TokenStream {
 
 fn tokenize_jump_statement(j: &syntax::JumpStatement) -> TokenStream {
   match *j {
-    syntax::JumpStatement::Continue => quote!{ JumpStatement::Continue },
-    syntax::JumpStatement::Break => quote!{ JumpStatement::Break },
-    syntax::JumpStatement::Discard => quote!{ JumpStatement::Discard },
+    syntax::JumpStatement::Continue => quote!{ glsl::syntax::JumpStatement::Continue },
+    syntax::JumpStatement::Break => quote!{ glsl::syntax::JumpStatement::Break },
+    syntax::JumpStatement::Discard => quote!{ glsl::syntax::JumpStatement::Discard },
     syntax::JumpStatement::Return(ref e) => {
-      let e = Box::new(tokenize_expr(e));
-      quote!{ JumpStatement::Return(#e) }
+      let e = Box::new(tokenize_expr(e)).quote();
+      quote!{ glsl::syntax::JumpStatement::Return(#e) }
     }
   }
 }
