@@ -24,3 +24,9 @@ impl<T> Quoted for Box<T> where T: ToTokens {
     quote!{ Box::new(#self) }
   }
 }
+
+impl<'a> Quoted for &'a str {
+  fn quote(self) -> TokenStream {
+    quote!{ String::from(#self) }
+  }
+}

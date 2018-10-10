@@ -223,8 +223,11 @@ fn tokenize_type_specifier_non_array(t: &syntax::TypeSpecifierNonArray) -> Token
     syntax::TypeSpecifierNonArray::UImage2DMSArray => quote!{ glsl::syntax::TypeSpecifierNonArray::UImage2DMSArray },
     syntax::TypeSpecifierNonArray::USamplerCubeArray => quote!{ glsl::syntax::TypeSpecifierNonArray::USamplerCubeArray },
     syntax::TypeSpecifierNonArray::UImageCubeArray => quote!{ glsl::syntax::TypeSpecifierNonArray::UImageCubeArray },
-    syntax::TypeSpecifierNonArray::Struct(ref s) => tokenize_struct_non_declaration(s),
-    syntax::TypeSpecifierNonArray::TypeName(ref tn) => quote!{#tn}
+    syntax::TypeSpecifierNonArray::Struct(ref s) => {
+      let s = tokenize_struct_non_declaration(s);
+      quote!{ glsl::syntax::TypeSpecifierNonArray::Struct(#s) }
+    }
+    syntax::TypeSpecifierNonArray::TypeName(ref tn) => quote!{String::from(#tn)}
   }
 }
 
@@ -258,7 +261,7 @@ fn tokenize_struct_non_declaration(s: &syntax::StructSpecifier) -> TokenStream {
 
   quote!{
     glsl::syntax::StructSpecifier {
-      name: String::from(#name),
+      name: Some(String::from(#name)),
       fields: vec![#(#fields),*]
     }
   }
@@ -290,7 +293,7 @@ fn tokenize_array_spec(a: &syntax::ArraySpecifier) -> TokenStream {
 
 fn tokenize_arrayed_identifier(i: &syntax::Identifier, arr_spec: &Option<syntax::ArraySpecifier>) -> TokenStream {
   let arr_spec = arr_spec.as_ref().map(tokenize_array_spec).quote();
-  quote!{ (#i, #arr_spec) }
+  quote!{ (String::from(#i), #arr_spec) }
 }
 
 fn tokenize_type_qualifier(q: &syntax::TypeQualifier) -> TokenStream {
@@ -618,14 +621,14 @@ fn tokenize_init_declarator_list(i: &syntax::InitDeclaratorList) -> TokenStream 
 
 fn tokenize_single_declaration(d: &syntax::SingleDeclaration) -> TokenStream {
   let ty = tokenize_fully_specified_type(&d.ty);
-  let name = &d.name;
+  let name = d.name.as_ref().map(|i| i.quote()).quote();
   let array_specifier = d.array_specifier.as_ref().map(tokenize_array_spec).quote();
   let initializer = d.initializer.as_ref().map(tokenize_initializer).quote();
 
   quote!{
     glsl::syntax::SingleDeclaration {
       ty: #ty,
-      name: String::from(#name),
+      name: #name,
       array_specifier: #array_specifier,
       initializer: #initializer
     }
@@ -649,7 +652,7 @@ fn tokenize_single_declaration_no_type(d: &syntax::SingleDeclarationNoType) -> T
 fn tokenize_initializer(i: &syntax::Initializer) -> TokenStream {
   match *i {
     syntax::Initializer::Simple(ref e) => {
-      let e = tokenize_expr(e);
+      let e = Box::new(tokenize_expr(e)).quote();
       quote!{ glsl::syntax::Initializer::Simple(#e) }
     }
 

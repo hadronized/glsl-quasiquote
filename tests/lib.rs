@@ -29,3 +29,13 @@ fn fn_returns_int() {
     }
   };
 }
+
+#[test]
+fn simple_struct() {
+  let _ = glsl!{
+    struct V {
+      vec4 p;
+      vec2 uv;
+    };
+  };
+}
