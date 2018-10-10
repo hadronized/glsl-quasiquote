@@ -37,5 +37,36 @@ fn simple_struct() {
       vec4 p;
       vec2 uv;
     };
+
+    struct F {
+      vec4 color;
+    };
+  };
+}
+
+#[test]
+fn struct_several_ident_per_field() {
+  let _ = glsl!{
+    struct S {
+      float a, b, c;
+    };
+  };
+}
+
+#[test]
+fn struct_with_identifiers() {
+  let _ = glsl!{
+    struct S {
+      float a, b, c;
+    } foo, bar, zoo;
+  };
+}
+
+#[test]
+fn struct_with_arrayed_identifiers() {
+  let _ = glsl!{
+    struct S {
+      float a, b, c;
+    } foo[3], bar[12], zoo[];
   };
 }
