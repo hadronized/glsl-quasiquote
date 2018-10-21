@@ -8,17 +8,13 @@ fn void_main_empty() {
 }
 
 #[test]
-fn void_main_empty_str() {
-  let _ = glsl_str!{"void main() {}"};
-}
-
-#[test]
-fn understands_version() {
-  let _ = glsl_str!{"
+fn understands_version_and_extension() {
+  let _ = glsl!{
     #version 330 core
+    #extension GL_foo_bar : require
     void main() {
     }
-  "};
+  };
 }
 
 #[test]
