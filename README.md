@@ -1,6 +1,6 @@
 # GLSL quasiquoting.
 
-This crate exports a procedural macros: `glsl!`. It enables quasiquoting by allowing you to
+This crate exports a procedural macro: `glsl!`. It enables quasiquoting by allowing you to
 embed GLSL source code directly into rust via the syntax:
 
 ```ignore
@@ -30,7 +30,7 @@ glsl-quasiquote = "0.2"
 Then, you currently need to have a nightly compiler and the following feature enabled:
 
 ```ignore
-#![feature(proc_macro_non_items)]
+#![feature(proc_macro_hygiene)]
 ```
 
 Then, depending on which you’re using the 2018 edition or not:
