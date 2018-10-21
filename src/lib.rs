@@ -1,7 +1,9 @@
+#![feature(proc_macro_span)]
+
 //! # GLSL quasiquoting.
 //!
-//! This crate exports two procedural macros: `glsl!` and `glsl_str!`. They enable quasiquoting by
-//! allowing you to embed GLSL source code directly into rust via the syntax:
+//! This crate exports a procedural macros: `glsl!`. It enables quasiquoting by allowing you to
+//! embed GLSL source code directly into rust via the syntax:
 //!
 //! ```ignore
 //! glsl!{
@@ -11,53 +13,42 @@
 //! }
 //! ```
 //!
-//! The `glsl!` macro accepts the GLSL code directly. You should be using that macro in pretty much
-//! all situations, but there’s an edge corner that might require you to use its `glsl_str!`
-//! sibling: if you wan to use the `#version` or `#extension` GLSL pragmas. Rust procedural macro
-//! system will parse those pragmas as regular Rust token and will ignore the mandatory `\n`,
-//! causing the macro to fail. In that case, you need to use an opaque string to encode the newlines
-//! by doing so:
+//! The `glsl!` macro accepts the GLSL code directly. You can then write plain GLSL. Especially,
+//! since version **0.2**, the macro accepts plain GLSL pragmas (both `#version` and `#extension`).
 //!
-//! ```ignore
-//! glsl_str!{"
-//!   #version 330 core
-//!   // your GLSL code here
-//! "}
-//! ```
-//!
-//! Both the `glsl!` and `glsl_str!` procedural macro resolve at compile-time to
-//! `glsl::syntax::TranslationUnit`, allowing you to manipulate the GLSL AST directly. Feel free
-//! to have a look at the [`glsl`](https://crates.io/crates/glsl) crate for further information.
+//! The `glsl!` procedural macro resolves at compile-time to `glsl::syntax::TranslationUnit`,
+//! allowing you to manipulate the GLSL AST directly. Feel free to have a look at the
+//! [`glsl`](https://crates.io/crates/glsl) crate for further information.
 //!
 //! # Getting started
-//! 
+//!
 //! Add the following to your dependencies in your `Cargo.toml`:
-//! 
+//!
 //! ```ignore
 //! glsl = "0.9"
-//! glsl-quasiquote = "0.1"
+//! glsl-quasiquote = "0.2"
 //! ```
-//! 
+//!
 //! Then, you currently need to have a nightly compiler and the following feature enabled:
-//! 
+//!
 //! ```ignore
 //! #![feature(proc_macro_non_items)]
 //! ```
-//! 
+//!
 //! Then, depending on which you’re using the 2018 edition or not:
-//! 
+//!
 //! > *Non-2018 edition*
-//! 
+//!
 //! ```ignore
 //! extern crate glsl;
 //! #[macro_use] extern crate glsl_quasiquote;
 //! ```
-//! 
+//!
 //! > *2018 edition*
-//! 
+//!
 //! ```ignore
 //! extern crate glsl;
-//! use glsl_quasiquote::{glsl, glsl_str};
+//! use glsl_quasiquote::glsl;
 //! ```
 
 extern crate glsl;
@@ -65,27 +56,49 @@ extern crate proc_macro;
 extern crate proc_macro2;
 #[macro_use] extern crate quote;
 
-mod quoted;
-
 use glsl::parser::{ParseResult, parse_str};
-use glsl::parsers::translation_unit;
+use glsl::parsers::{preprocessor, translation_unit};
 use glsl::syntax;
 use proc_macro2::TokenStream;
+use std::iter::FromIterator;
 
 use quoted::Quoted;
 
+mod quoted;
+
 #[proc_macro]
-pub fn glsl(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn glsl(mut input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+  // prior to parsing, we try to detect annotations
+  let mut code = Vec::new();
+
+  loop {
+    let (pp, input_rest) = recognize_pragma(input);
+
+    input = input_rest;
+
+    match pp {
+      Some(pp) => {
+        code.push(syntax::ExternalDeclaration::Preprocessor(pp));
+      }
+
+      None => break
+    }
+  }
+
+  // annotation detection done, we can go on normally
   let s = format!("{}", input);
   let parsed = parse_str(s.as_str(), translation_unit);
 
-  if let ParseResult::Ok(tu) = parsed {
-    tokenize_translation_unit(&tu).into()
+  if let ParseResult::Ok(mut tu) = parsed {
+    // add the eventual annotations
+    code.append(&mut tu);
+    tokenize_translation_unit(&code).into()
   } else {
     panic!("GLSL error: {:?}", parsed);
   }
 }
 
+#[deprecated(since = "0.2", note = "this macro is not needed anymore as the glsl! now supports pragmas via Rust attributes")]
 #[proc_macro]
 pub fn glsl_str(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
   // we assume only one token: a string
@@ -105,6 +118,59 @@ pub fn glsl_str(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     x => {
       panic!("GLSL error: incorrect macro invocation, please use a single opaque string; saw {:?}", x);
     }
+  }
+}
+
+// Recognize a # pragma.
+fn recognize_pragma(
+  input: proc_macro::TokenStream
+) -> (Option<syntax::Preprocessor>, proc_macro::TokenStream) {
+  let mut iter = input.into_iter().peekable();
+
+  // get the span info on the dash, if any
+  let dash_start = iter.peek().and_then(|token| {
+    match token {
+      proc_macro::TokenTree::Punct(ref dash_p) if dash_p.as_char() == '#' => {
+        Some(dash_p.span().start())
+      }
+
+      _ => None
+    }
+  });
+
+  match dash_start {
+    Some(ref dash_start) => {
+      // drop the dash
+      iter.next().unwrap();
+
+      let mut pragma_tokens = Vec::new();
+
+      loop {
+        // peek the next token and check whether it belongs to the same stream (same line)
+        let belong_to_stream = iter.peek().map(|peeked| peeked.span().start().line == dash_start.line).unwrap_or(false);
+
+        if belong_to_stream {
+          let token = iter.next().unwrap(); // safe because of peeked
+          pragma_tokens.push(token);
+        } else {
+          // the token is on a different line; abort mission, please.
+          break;
+        }
+      }
+
+      let pragma_stream = proc_macro::TokenStream::from_iter(pragma_tokens);
+      let content_str = format!("#{}\n", pragma_stream);
+
+      match parse_str(content_str.as_str(), preprocessor) {
+        ParseResult::Ok(pp) => {
+          (Some(pp), proc_macro::TokenStream::from_iter(iter))
+        }
+
+        res => panic!("cannot parse GLSL annotation: {:?}", res)
+      }
+    }
+
+    _ => (None, proc_macro::TokenStream::from_iter(iter))
   }
 }
 
@@ -925,7 +991,7 @@ fn tokenize_preprocessor_extension(pe: &syntax::PreprocessorExtension) -> TokenS
 
   quote!{
     glsl::syntax::PreprocessorExtension {
-      name: String::from(#name),
+      name: #name,
       behavior: #behavior
     }
   }
