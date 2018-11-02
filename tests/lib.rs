@@ -1,10 +1,11 @@
 #![feature(proc_macro_hygiene)]
 
+extern crate glsl;
 #[macro_use] extern crate glsl_quasiquote;
 
 #[test]
 fn void_main_empty() {
-  let _ = glsl!{void main() {}};
+  let _  = glsl!{void main() {}};
 }
 
 #[test]
