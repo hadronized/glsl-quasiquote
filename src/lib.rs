@@ -26,7 +26,7 @@
 //!
 //! ```ignore
 //! glsl = "0.10"
-//! glsl-quasiquote = "0.3"
+//! glsl-quasiquote = "0.2"
 //! ```
 //!
 //! Then, you currently need to have a nightly compiler and the following feature enabled:

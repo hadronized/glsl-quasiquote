@@ -1,3 +1,9 @@
+## 0.2.1
+
+> Mon 5th of November 2018
+
+  - Add the `Tokenize` trait and move tokenizers in their own modules.
+
 # 0.2
 
 > Sun 21st of October 2018
