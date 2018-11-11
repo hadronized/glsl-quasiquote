@@ -25,7 +25,7 @@
 //! Add the following to your dependencies in your `Cargo.toml`:
 //!
 //! ```ignore
-//! glsl = "0.10"
+//! glsl = "0.11"
 //! glsl-quasiquote = "0.2"
 //! ```
 //!

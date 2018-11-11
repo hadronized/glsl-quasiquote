@@ -23,7 +23,7 @@ allowing you to manipulate the GLSL AST directly. Feel free to have a look at th
 Add the following to your dependencies in your `Cargo.toml`:
 
 ```ignore
-glsl = "0.9"
+glsl = "0.11"
 glsl-quasiquote = "0.2"
 ```
 
