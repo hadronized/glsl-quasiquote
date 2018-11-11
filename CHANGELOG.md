@@ -1,3 +1,9 @@
+## 0.2.2
+
+> Sun 11th of November 2018
+
+  - Fix internal code for tokenizers.
+
 ## 0.2.1
 
 > Mon 5th of November 2018

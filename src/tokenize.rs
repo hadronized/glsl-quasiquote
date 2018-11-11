@@ -262,7 +262,7 @@ fn tokenize_struct_non_declaration(s: &syntax::StructSpecifier) -> TokenStream {
 fn tokenize_struct_field(field: &syntax::StructFieldSpecifier) -> TokenStream {
   let qual = field.qualifier.as_ref().map(tokenize_type_qualifier).quote();
   let ty = tokenize_type_specifier(&field.ty);
-  let identifiers = field.identifiers.iter().map(|&(ref a, ref b)| tokenize_arrayed_identifier(a, b));
+  let identifiers = field.identifiers.iter().map(tokenize_arrayed_identifier);
 
   quote!{
     glsl::syntax::StructFieldSpecifier {
@@ -283,9 +283,13 @@ fn tokenize_array_spec(a: &syntax::ArraySpecifier) -> TokenStream {
   }
 }
 
-fn tokenize_arrayed_identifier(i: &syntax::Identifier, arr_spec: &Option<syntax::ArraySpecifier>) -> TokenStream {
-  let arr_spec = arr_spec.as_ref().map(tokenize_array_spec).quote();
-  quote!{ (String::from(#i), #arr_spec) }
+fn tokenize_arrayed_identifier(identifier: &syntax::ArrayedIdentifier) -> TokenStream {
+  let ident = &identifier.ident;
+  let array_spec = identifier.array_spec.as_ref().map(tokenize_array_spec).quote();
+
+  quote!{
+    glsl::syntax::ArrayedIdentifier::new(#ident, #array_spec)
+  }
 }
 
 fn tokenize_type_qualifier(q: &syntax::TypeQualifier) -> TokenStream {
@@ -587,14 +591,12 @@ fn tokenize_function_parameter_declaration(p: &syntax::FunctionParameterDeclarat
 
 fn tokenize_function_parameter_declarator(p: &syntax::FunctionParameterDeclarator) -> TokenStream {
   let ty = tokenize_type_specifier(&p.ty);
-  let name = &p.name;
-  let a = p.array_spec.as_ref().map(tokenize_array_spec).quote();
+  let ident = tokenize_arrayed_identifier(&p.ident);
 
   quote!{
     glsl::syntax::FunctionParameterDeclarator {
       ty: #ty,
-      name: String::from(#name),
-      array_spec: #a
+      ident: #ident
     }
   }
 }
@@ -628,14 +630,12 @@ fn tokenize_single_declaration(d: &syntax::SingleDeclaration) -> TokenStream {
 }
 
 fn tokenize_single_declaration_no_type(d: &syntax::SingleDeclarationNoType) -> TokenStream {
-  let name = &d.name;
-  let array_specifier = d.array_specifier.as_ref().map(tokenize_array_spec).quote();
+  let ident = tokenize_arrayed_identifier(&d.ident);
   let initializer = d.initializer.as_ref().map(tokenize_initializer).quote();
 
   quote!{
     glsl::syntax::SingleDeclarationNoType {
-      name: String::from(#name),
-      array_specifier: #array_specifier,
+      ident: #ident,
       initializer: #initializer
     }
   }
@@ -659,7 +659,7 @@ fn tokenize_block(b: &syntax::Block) -> TokenStream {
   let qual = tokenize_type_qualifier(&b.qualifier);
   let name = &b.name;
   let fields = b.fields.iter().map(tokenize_struct_field);
-  let identifier = b.identifier.as_ref().map(|&(ref a, ref b)| tokenize_arrayed_identifier(a, b)).quote();
+  let identifier = b.identifier.as_ref().map(tokenize_arrayed_identifier).quote();
 
   quote!{
     glsl::syntax::Block {
