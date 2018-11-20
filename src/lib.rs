@@ -88,15 +88,15 @@ pub fn glsl(mut input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
   // annotation detection done, we can go on normally
   let s = format!("{}", input);
-  let parsed = Parse::parse_str(s.as_str());
+  let parsed: ParseResult<syntax::TranslationUnit> = Parse::parse_str(s.as_str());
 
   if let ParseResult::Ok(mut tu) = parsed {
     // add the eventual annotations
-    code.append(&mut tu);
+    code.append(&mut (tu.0).0);
 
     // create the stream and return it
     let mut stream = TokenStream::new();
-    code.tokenize(&mut stream);
+    syntax::TranslationUnit(syntax::NonEmpty(code)).tokenize(&mut stream);
 
     stream.into()
   } else {

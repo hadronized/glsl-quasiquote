@@ -43,12 +43,6 @@ impl Tokenize for f64 {
   }
 }
 
-impl Tokenize for String {
-  fn tokenize(&self, stream: &mut TokenStream) {
-    self.to_tokens(stream)
-  }
-}
-
 macro_rules! impl_tokenize {
   ($type_name:ty, $tokenizer:ident) => {
     impl Tokenize for $type_name {
@@ -59,6 +53,8 @@ macro_rules! impl_tokenize {
   }
 }
 
+impl_tokenize!(syntax::Identifier, tokenize_identifier);
+impl_tokenize!(syntax::TypeName, tokenize_type_name);
 impl_tokenize!(syntax::TypeSpecifierNonArray, tokenize_type_specifier_non_array);
 impl_tokenize!(syntax::TypeSpecifier, tokenize_type_specifier);
 impl_tokenize!(syntax::UnaryOp, tokenize_unary_op);
@@ -99,6 +95,16 @@ impl_tokenize!(syntax::PreprocessorVersionProfile, tokenize_preprocessor_version
 impl_tokenize!(syntax::PreprocessorExtensionName, tokenize_preprocessor_extension_name);
 impl_tokenize!(syntax::PreprocessorExtensionBehavior, tokenize_preprocessor_extension_behavior);
 impl_tokenize!(syntax::PreprocessorExtension, tokenize_preprocessor_extension);
+
+fn tokenize_identifier(i: &syntax::Identifier) -> TokenStream {
+  let i = i.quote();
+  quote!{ #i }
+}
+
+fn tokenize_type_name(tn: &syntax::TypeName) -> TokenStream {
+  let tn = tn.quote();
+  quote!{ #tn }
+}
 
 fn tokenize_type_specifier_non_array(t: &syntax::TypeSpecifierNonArray) -> TokenStream {
   match *t {
@@ -215,11 +221,17 @@ fn tokenize_type_specifier_non_array(t: &syntax::TypeSpecifierNonArray) -> Token
     syntax::TypeSpecifierNonArray::UImage2DMSArray => quote!{ glsl::syntax::TypeSpecifierNonArray::UImage2DMSArray },
     syntax::TypeSpecifierNonArray::USamplerCubeArray => quote!{ glsl::syntax::TypeSpecifierNonArray::USamplerCubeArray },
     syntax::TypeSpecifierNonArray::UImageCubeArray => quote!{ glsl::syntax::TypeSpecifierNonArray::UImageCubeArray },
+
     syntax::TypeSpecifierNonArray::Struct(ref s) => {
       let s = tokenize_struct_non_declaration(s);
       quote!{ glsl::syntax::TypeSpecifierNonArray::Struct(#s) }
     }
-    syntax::TypeSpecifierNonArray::TypeName(ref tn) => quote!{String::from(#tn)}
+
+    syntax::TypeSpecifierNonArray::TypeName(ref tn) => {
+      let tn = tn.quote();
+
+      quote!{ #tn }
+    }
   }
 }
 
@@ -248,13 +260,13 @@ fn tokenize_fully_specified_type(t: &syntax::FullySpecifiedType) -> TokenStream 
 }
 
 fn tokenize_struct_non_declaration(s: &syntax::StructSpecifier) -> TokenStream {
-  let name = &s.name;
-  let fields = s.fields.iter().map(tokenize_struct_field);
+  let name = s.name.as_ref().map(|n| n.quote());
+  let fields = s.fields.0.iter().map(tokenize_struct_field);
 
   quote!{
     glsl::syntax::StructSpecifier {
-      name: Some(String::from(#name)),
-      fields: vec![#(#fields),*]
+      name: Some(#name),
+      fields: glsl::syntax::NonEmpty(vec![#(#fields),*])
     }
   }
 }
@@ -262,13 +274,13 @@ fn tokenize_struct_non_declaration(s: &syntax::StructSpecifier) -> TokenStream {
 fn tokenize_struct_field(field: &syntax::StructFieldSpecifier) -> TokenStream {
   let qual = field.qualifier.as_ref().map(tokenize_type_qualifier).quote();
   let ty = tokenize_type_specifier(&field.ty);
-  let identifiers = field.identifiers.iter().map(tokenize_arrayed_identifier);
+  let identifiers = field.identifiers.0.iter().map(tokenize_arrayed_identifier);
 
   quote!{
     glsl::syntax::StructFieldSpecifier {
       qualifier: #qual,
       ty: #ty,
-      identifiers: vec![#(#identifiers),*]
+      identifiers: glsl::syntax::NonEmpty(vec![#(#identifiers),*])
     }
   }
 }
@@ -284,7 +296,7 @@ fn tokenize_array_spec(a: &syntax::ArraySpecifier) -> TokenStream {
 }
 
 fn tokenize_arrayed_identifier(identifier: &syntax::ArrayedIdentifier) -> TokenStream {
-  let ident = &identifier.ident;
+  let ident = identifier.ident.quote();
   let array_spec = identifier.array_spec.as_ref().map(tokenize_array_spec).quote();
 
   quote!{
@@ -293,11 +305,11 @@ fn tokenize_arrayed_identifier(identifier: &syntax::ArrayedIdentifier) -> TokenS
 }
 
 fn tokenize_type_qualifier(q: &syntax::TypeQualifier) -> TokenStream {
-  let quals = q.qualifiers.iter().map(tokenize_type_qualifier_spec);
+  let quals = q.qualifiers.0.iter().map(tokenize_type_qualifier_spec);
 
   quote!{
     glsl::syntax::TypeQualifier {
-      qualifiers: vec![#(#quals),*]
+      qualifiers: glsl::syntax::NonEmpty(vec![#(#quals),*])
     }
   }
 }
@@ -347,18 +359,23 @@ fn tokenize_storage_qualifier(q: &syntax::StorageQualifier) -> TokenStream {
     syntax::StorageQualifier::Restrict => quote!{ glsl::syntax::StorageQualifier::Restrict },
     syntax::StorageQualifier::ReadOnly => quote!{ glsl::syntax::StorageQualifier::ReadOnly },
     syntax::StorageQualifier::WriteOnly => quote!{ glsl::syntax::StorageQualifier::WriteOnly },
-    syntax::StorageQualifier::Subroutine(ref n) => quote!{
-      StorageQualifier::Subroutine(vec![#(String::from(#n)),*])
+
+    syntax::StorageQualifier::Subroutine(ref n) => {
+      let n = n.iter().map(|t| t.quote());
+
+      quote!{
+        StorageQualifier::Subroutine(vec![#(#n),*])
+      }
     }
   }
 }
 
 fn tokenize_layout_qualifier(l: &syntax::LayoutQualifier) -> TokenStream {
-  let ids = l.ids.iter().map(tokenize_layout_qualifier_spec);
+  let ids = l.ids.0.iter().map(tokenize_layout_qualifier_spec);
 
   quote!{
     glsl::syntax::LayoutQualifier {
-      ids: vec![#(#ids),*]
+      ids: glsl::syntax::NonEmpty(vec![#(#ids),*])
     }
   }
 }
@@ -366,6 +383,7 @@ fn tokenize_layout_qualifier(l: &syntax::LayoutQualifier) -> TokenStream {
 fn tokenize_layout_qualifier_spec(l: &syntax::LayoutQualifierSpec) -> TokenStream {
   match *l {
     syntax::LayoutQualifierSpec::Identifier(ref i, ref e) => {
+      let i = i.quote();
       let expr = e.as_ref().map(|e| Box::new(tokenize_expr(&e)).quote()).quote();
       quote!{ glsl::syntax::LayoutQualifierSpec::Identifier(#i, #expr) }
     }
@@ -392,7 +410,10 @@ fn tokenize_interpolation_qualifier(i: &syntax::InterpolationQualifier) -> Token
 
 fn tokenize_expr(expr: &syntax::Expr) -> TokenStream {
   match *expr {
-    syntax::Expr::Variable(ref i) => quote!{ glsl::syntax::Expr::Variable(#i) },
+    syntax::Expr::Variable(ref i) => {
+      let i = i.quote();
+      quote!{ glsl::syntax::Expr::Variable(#i) }
+    }
 
     syntax::Expr::IntConst(ref x) => quote!{ glsl::syntax::Expr::IntConst(#x) },
 
@@ -445,6 +466,8 @@ fn tokenize_expr(expr: &syntax::Expr) -> TokenStream {
 
     syntax::Expr::Dot(ref e, ref i) => {
       let e = Box::new(tokenize_expr(e)).quote();
+      let i = i.quote();
+
       quote!{ glsl::syntax::Expr::Dot(#e, #i) }
     }
 
@@ -519,8 +542,10 @@ fn tokenize_assignment_op(op: &syntax::AssignmentOp) -> TokenStream {
 
 fn tokenize_function_identifier(i: &syntax::FunIdentifier) -> TokenStream {
   match *i {
-    syntax::FunIdentifier::Identifier(ref n) =>
-      quote!{ glsl::syntax::FunIdentifier::Identifier(String::from(#n)) },
+    syntax::FunIdentifier::Identifier(ref n) => {
+      let n = n.quote();
+      quote!{ glsl::syntax::FunIdentifier::Identifier(#n) }
+    }
 
     syntax::FunIdentifier::Expr(ref e) => {
       let e = tokenize_expr(e);
@@ -554,6 +579,8 @@ fn tokenize_declaration(d: &syntax::Declaration) -> TokenStream {
 
     syntax::Declaration::Global(ref qual, ref identifiers) => {
       let qual = tokenize_type_qualifier(qual);
+      let identifiers = identifiers.iter().map(|i| i.quote());
+
       quote!{ glsl::syntax::Declaration::Global(#qual, vec![#(#identifiers),*]) }
     }
   }
@@ -561,13 +588,13 @@ fn tokenize_declaration(d: &syntax::Declaration) -> TokenStream {
 
 fn tokenize_function_prototype(fp: &syntax::FunctionPrototype) -> TokenStream {
   let ty = tokenize_fully_specified_type(&fp.ty);
-  let name = &fp.name;
+  let name = fp.name.quote();
   let params = fp.parameters.iter().map(tokenize_function_parameter_declaration);
 
   quote!{
     glsl::syntax::FunctionPrototype {
       ty: #ty,
-      name: String::from(#name),
+      name: #name,
       parameters: vec![#(#params),*]
     }
   }
@@ -649,23 +676,23 @@ fn tokenize_initializer(i: &syntax::Initializer) -> TokenStream {
     }
 
     syntax::Initializer::List(ref list) => {
-      let l = list.iter().map(tokenize_initializer);
-      quote!{ glsl::syntax::Initializer::List(vec![#(#l),*]) }
+      let l = list.0.iter().map(tokenize_initializer);
+      quote!{ glsl::syntax::Initializer::List(glsl::syntax::NonEmpty(vec![#(#l),*])) }
     }
   }
 }
 
 fn tokenize_block(b: &syntax::Block) -> TokenStream {
   let qual = tokenize_type_qualifier(&b.qualifier);
-  let name = &b.name;
+  let name = b.name.quote();
   let fields = b.fields.iter().map(tokenize_struct_field);
   let identifier = b.identifier.as_ref().map(tokenize_arrayed_identifier).quote();
 
   quote!{
     glsl::syntax::Block {
       qualifier: #qual,
-      name: String::from(#name),
-      fields: vec![#(#fields),*],
+      name: #name,
+      fields: glsl::syntax::NonEmpty(vec![#(#fields),*]),
       identifier: #identifier
     }
   }
@@ -833,8 +860,10 @@ fn tokenize_condition(c: &syntax::Condition) -> TokenStream {
 
     syntax::Condition::Assignment(ref ty, ref name, ref initializer) => {
       let ty = tokenize_fully_specified_type(ty);
+      let name = name.quote();
       let initializer = tokenize_initializer(initializer);
-      quote!{ glsl::syntax::Condition::Assignment(#ty, String::from(#name), #initializer) }
+
+      quote!{ glsl::syntax::Condition::Assignment(#ty, #name, #initializer) }
     }
   }
 }
@@ -927,7 +956,7 @@ fn tokenize_preprocessor_extension_name(name: &syntax::PreprocessorExtensionName
   match *name {
     syntax::PreprocessorExtensionName::All => quote!{ glsl::syntax::PreprocessorExtensionName::All },
     syntax::PreprocessorExtensionName::Specific(ref n) =>
-      quote!{ glsl::syntax::PreprocessorExtensionName::Specific(String::from(#n)) }
+      quote!{ glsl::syntax::PreprocessorExtensionName::Specific(#n.to_owned()) }
   }
 }
 
@@ -960,6 +989,6 @@ fn tokenize_external_declaration(ed: &syntax::ExternalDeclaration) -> TokenStrea
 }
 
 fn tokenize_translation_unit(tu: &syntax::TranslationUnit) -> TokenStream {
-  let tu = tu.iter().map(tokenize_external_declaration);
-  quote!{vec![#(#tu),*]}
+  let tu = (tu.0).0.iter().map(tokenize_external_declaration);
+  quote!{ glsl::syntax::TranslationUnit(glsl::syntax::NonEmpty(vec![#(#tu),*])) }
 }

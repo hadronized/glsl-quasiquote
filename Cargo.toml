@@ -24,3 +24,6 @@ proc-macro = true
 glsl = "0.12"
 proc-macro2 = "0.4"
 quote = "0.6"
+
+[patch.crates-io]
+glsl = { path = "/home/phaazon/dev/glsl" }
