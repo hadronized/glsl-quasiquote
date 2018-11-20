@@ -4,14 +4,16 @@
 use proc_macro2::TokenStream;
 use quote::ToTokens;
 
+use glsl::syntax::{Identifier, TypeName};
+
 // Quoted type.
 pub trait Quoted {
-  fn quote(self) -> TokenStream;
+  fn quote(&self) -> TokenStream;
 }
 
 impl<T> Quoted for Option<T> where T: ToTokens {
-  fn quote(self) -> TokenStream {
-    if let Some(x) = self {
+  fn quote(&self) -> TokenStream {
+    if let Some(ref x) = *self {
       quote!{ Some(#x) }
     } else {
       quote!{ None }
@@ -20,13 +22,21 @@ impl<T> Quoted for Option<T> where T: ToTokens {
 }
 
 impl<T> Quoted for Box<T> where T: ToTokens {
-  fn quote(self) -> TokenStream {
+  fn quote(&self) -> TokenStream {
     quote!{ Box::new(#self) }
   }
 }
 
-impl<'a> Quoted for &'a str {
-  fn quote(self) -> TokenStream {
-    quote!{ String::from(#self) }
+impl Quoted for Identifier {
+  fn quote(&self) -> TokenStream {
+    let s = &self.0;
+    quote!{ glsl::syntax::Identifier(#s.to_owned()) }
+  }
+}
+
+impl Quoted for TypeName {
+  fn quote(&self) -> TokenStream {
+    let s = &self.0;
+    quote!{ glsl::syntax::TypeName(#s.to_owned()) }
   }
 }
