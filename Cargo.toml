@@ -21,9 +21,6 @@ maintenance = { status = "passively-maintained" }
 proc-macro = true
 
 [dependencies]
-glsl = "0.12"
+glsl = "0.13"
 proc-macro2 = "0.4"
 quote = "0.6"
-
-[patch.crates-io]
-glsl = { path = "/home/phaazon/dev/glsl" }
