@@ -908,6 +908,11 @@ fn tokenize_jump_statement(j: &syntax::JumpStatement) -> TokenStream {
 
 fn tokenize_preprocessor(pp: &syntax::Preprocessor) -> TokenStream {
   match *pp {
+    syntax::Preprocessor::Define(ref pd) => {
+      let pd = tokenize_preprocessor_define(pd);
+      quote!{ glsl::syntax::Preprocessor::Define(#pd) }
+    }
+
     syntax::Preprocessor::Version(ref pv) => {
       let pv = tokenize_preprocessor_version(pv);
       quote!{ glsl::syntax::Preprocessor::Version(#pv) }
@@ -916,6 +921,18 @@ fn tokenize_preprocessor(pp: &syntax::Preprocessor) -> TokenStream {
     syntax::Preprocessor::Extension(ref pe) => {
       let pe = tokenize_preprocessor_extension(pe);
       quote!{ glsl::syntax::Preprocessor::Extension(#pe) }
+    }
+  }
+}
+
+fn tokenize_preprocessor_define(pd: &syntax::PreprocessorDefine) -> TokenStream {
+  let name = tokenize_identifier(&pd.name);
+  let value = tokenize_expr(&pd.value);
+
+  quote!{
+    glsl::syntax::PreprocessorDefine {
+      name: #name,
+      value: #value
     }
   }
 }

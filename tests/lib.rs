@@ -19,6 +19,15 @@ fn understands_version_and_extension() {
 }
 
 #[test]
+fn understands_define() {
+  let _ = glsl!{
+    #define foo 32
+    void main() {
+    }
+  };
+}
+
+#[test]
 fn fn_returns_int() {
   let _ = glsl!{
     int test() {
