@@ -1,3 +1,9 @@
+## 0.3
+
+> Wed 21th of November 2018
+
+  - Add support for #define.
+
 ## 0.2.2
 
 > Sun 11th of November 2018
