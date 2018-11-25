@@ -230,7 +230,7 @@ fn tokenize_type_specifier_non_array(t: &syntax::TypeSpecifierNonArray) -> Token
     syntax::TypeSpecifierNonArray::TypeName(ref tn) => {
       let tn = tn.quote();
 
-      quote!{ #tn }
+      quote!{ glsl::syntax::TypeSpecifierNonArray::TypeName(#tn) }
     }
   }
 }

@@ -76,3 +76,11 @@ fn struct_with_arrayed_identifiers() {
     } foo[3], bar[12], zoo[];
   };
 }
+
+#[test]
+fn typed_return() {
+  let _ = glsl!{
+    ReturnType foo() {
+    }
+  };
+}
