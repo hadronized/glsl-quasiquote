@@ -548,7 +548,7 @@ fn tokenize_function_identifier(i: &syntax::FunIdentifier) -> TokenStream {
     }
 
     syntax::FunIdentifier::Expr(ref e) => {
-      let e = tokenize_expr(e);
+      let e = Box::new(tokenize_expr(e)).quote();
       quote!{ glsl::syntax::FunIdentifier::Expr(#e) }
     }
   }
